@@ -1,0 +1,140 @@
+Convex, Concave, Quasiconcave, or What?
+========================================================
+
+This note tries to provide a graphical explanation to the quasiconcavity of real valued functions. Please refer to Daniel Wilhem's lecture note and Pemberton & Rau.
+
+Definitions
+-----------
+
+Here we first remind ourselves of the relevant definitions. After that, we illustrate each of them.
+
+#### Convex Set
+
+> A set $V \subset \mathbb{R}^n$ is called **convex** if the line segment between any two points *in* $V$ is contained in the set itself, i.e. if $$ \alpha x + (1-\alpha)y \in V \text{ for all }\alpha \in [0,1], x,y \in V $$ 
+
+#### Concave Function
+
+> $f$ is a **concave** function if all the points *on or below* its graph form a convex set, i.e. if the set $$ \{(x,y) \in \mathbb{R}^n \times \mathbb{R}: y\leq f(x)\} $$ is convex.
+
+#### Quasi-concave Function
+
+> $f$ is a **quasi-concave** function if for any number $c\in\mathbb{R}$, the following sets are convex: $$ \{ x \in \mathbb{R}^n: f(x) \geq c \}$$
+
+A Concave function
+----------------
+
+```{r setup, eval=TRUE, echo=FALSE, message=FALSE}
+nx <- 50  # points into x direction
+ny <- 50	# points into y
+x <- seq(0,1,length=50)
+y <- seq(0,1,length=50)
+df <- expand.grid(x=x,y=y)
+# DGPs
+cobb.douglas <- function(x,a,b) return( x[1]^a * x[2]^b )
+# data
+cd1 <- apply(df,1,cobb.douglas,a=0.25,b=0.25)
+cd2 <- apply(df,1,cobb.douglas,a=2,b=2)
+# put in a matrix
+cd.heights1 <- matrix(cd1,nrow=nx,ncol=ny)
+cd.heights2 <- matrix(cd2,nrow=nx,ncol=ny)
+library(rgl)
+knit_hooks$set(rgl = hook_rgl)
+```
+We plot the function $f(x,y) = x^{0.25} y^{0.25},x,y \geq 0$. You might recognize this as the canonical "Cobb Douglas" functional form. Here goes:
+
+```{r cd1,fig.width=7,fig.height=6,echo=FALSE,rgl=TRUE,message=FALSE,results='hide'}
+open3d()
+surface3d(x,y,cd.heights1,color="red",alpha=0.9)
+axes3d(labels=FALSE,tick=FALSE)
+view3d(theta=0,-70)
+```
+
+Now, why is this a *concave* function? We have to check all the points on or below it's graph, i.e. all the points on the shape and in the shape's interior. Line segments connecting any two points must lie inside the shape. Here I draw two lines, both of them are in the interior.
+
+```{r cd1line,fig.width=7,fig.height=6,echo=FALSE,rgl=TRUE,message=FALSE,results='hide'}
+open3d()
+surface3d(x,y,cd.heights1,color="red",alpha=0.3)
+axes3d()
+# line 1
+points3d(x=c(1,1),y=c(0,0.6),z=c(cobb.douglas(x=c(1,0),a=0.25,b=0.25),cobb.douglas(x=c(1,0.6),a=0.25,b=0.25)),size=4)
+segments3d(x=c(1,1),y=c(0,0.6),z=c(cobb.douglas(x=c(1,0),a=0.25,b=0.25),cobb.douglas(x=c(1,0.6),a=0.25,b=0.25)),lwd=2)
+# line2
+points3d(y=c(1,1),x=c(0,0.6),z=c(cobb.douglas(x=c(1,0),a=0.25,b=0.25),cobb.douglas(x=c(1,0.6),a=0.25,b=0.25)),size=4)
+segments3d(y=c(1,1),x=c(0,0.6),z=c(cobb.douglas(x=c(1,0),a=0.25,b=0.25),cobb.douglas(x=c(1,0.6),a=0.25,b=0.25)),lwd=2)
+view3d(theta=0,-70)
+```
+
+A quasi-concave function
+-----------------------
+
+Let's plot a quasi-concave function now. It's the same function as before, but with different powers: $f(x,y) = x^2 y^2,x,y \geq 0$
+
+```{r cd2,fig.width=7,fig.height=6,echo=FALSE,rgl=TRUE,message=FALSE,results='hide'}
+open3d()
+surface3d(x,y,cd.heights2,color="red",alpha=0.9)
+axes3d(labels=FALSE,tick=FALSE)
+view3d(theta=0,-70)
+```
+
+The definition of a quasi-concave function basically talks about the level sets of $f$, i.e. $\{ x \in \mathbb{R}^n: f(x) = c \}$ is the level set of $f$ at value $c$. Let's draw a couple of levels into our quasi-concave function and then look at the corresponding contour plot (of level sets):
+
+
+```{r cd2contour,fig.width=7,fig.height=6,echo=FALSE,rgl=TRUE,message=FALSE,results='hide'}
+open3d()
+surface3d(x,y,cd.heights2,color="red",alpha=0.7)
+axes3d(labels=FALSE,tick=FALSE)
+level <- seq(0.05,1.95,by=0.3)
+planes3d(a=0,b=0,c=-1,d=level,color="blue",alpha=0.8)
+view3d(theta=0,-80)
+```
+
+Here's the contour plot. This is like looking from above at the previous figure and drawing the lines where the original (red) shape and the inserted (blue) level sets intersect.
+
+```{r cd3,fig.width=7,fig.height=6,echo=FALSE,message=FALSE,results='hide'}
+contour(x=x,y=y,z=cd.heights2,levels=seq(0.05,1.95,by=0.15))
+```
+
+The important thing to note here is that each of the level sets is indeed a **convex set**: pick any two points and connect them, you'll draw a line *inside* the corresponding level set.
+
+Every Concave function is Quasi-Concave
+---------------------------------------
+
+That is easy to see if we draw the level sets of our concave function from above:
+```{r cd4,fig.width=7,fig.height=6,echo=FALSE,message=FALSE,results='hide'}
+contour(x=x,y=y,z=cd.heights1,levels=seq(0.05,1.95,by=0.15))
+```
+The level sets are convex.
+
+Not Every Quasi-Concave function is Concave
+---------------------------------------
+
+Remember that concavity requires that connecting any two points *on or below* the graph of $f$ must produce a line below the graph. Let's try that with our quasi-concave function:
+
+```{r cd5, fig.width=7,fig.height=6,echo=FALSE,message=FALSE,results='hide',rgl=TRUE}
+open3d()
+surface3d(x,y,cd.heights2,color="red")
+axes3d(labels=FALSE,tick=FALSE)
+points3d(y=c(1,1),x=c(0,0.8),z=c(cobb.douglas(x=c(1,0),a=2,b=2),cobb.douglas(x=c(1,0.8),a=2,b=2)),size=4)
+segments3d(y=c(1,1),x=c(0,0.8),z=c(cobb.douglas(x=c(1,0),a=2,b=2),cobb.douglas(x=c(1,0.8),a=2,b=2)),lwd=2)
+```
+You can see that the line lies outside the shape, so this does not qualify as a concave function.
+
+Why is this relevant for constrained maximization?
+--------------------------------------------------
+
+You can see that whenever $f$ is quasi-concave, level sets are convex (and most of the time differentiable). We want to find a unique point of tangency between the level sets of the objective $f$ and the constraint set. Convex level sets guarantee this.
+
+Try this at home
+----------------
+
+You can download a program called R and run a demo file, where you can actually move around the 3D shapes from above. It's for free. To try this out, follow those steps:
+1. go to [r-project](http://www.r-project.org) to download R
+2. go to [github-gist](https://gist.github.com/3826511) and download the demo file
+3. launch R
+4. click on File > Source File and choose the file "rgl.r" from the location you downloaded to in step 2
+5. the program will produce many plotting windows. you can place them on your screen, resize them, and grab the 3d objects with your mouse to move them around.
+
+
+
+
+
