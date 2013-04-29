@@ -1,0 +1,140 @@
+With what Probability r is a coin fair?
+=======================================
+
+This short note is inspired by an article on [BBC News](http://www.bbc.co.uk/news/magazine-22310186) regarding the use of statistical methods in court trials. At question is how to use statistical inference to reach a conclusion about an unobserved event. The coin example here provides a level of abstraction but maintains the most important features of the problem.
+
+## Which problem?
+
+> Suppose you are the judge in a fraud-related trial. The defendant is accused of having used a biased coin after claiming the coin would be fair. The evidence at hand is a trial of 10 coin tosses generated from the defendant's coin. The trial has 8 heads and 2 coins. How strong is the evidence? 
+
+The problem here is that there is a tension between what intuition would tell you and what statistics does. Intuitively, you might say that “yes of course the coin is biased - it came up heads in 80% of the cases!” The problem with this approach is that the estimate is based on a small number of observations. In fact, the probability of observing 8 heads in 10 throws with a fair coin is about `r 100*round(dbinom(x=8,size=10,prob=0.5),2)`%, which is definitely greater than zero, and so it is entirely possible to observe 8 heads even with a fair coin. If we define  a coin as a bernoulli random variable 
+
+$$ Z=\begin{cases}
+h(\text{ead}) & \text{with prob }r\\
+t(\text{ail}) & \text{with prob }1-r
+\end{cases}$$ 
+
+The above result comes from the well known Binomial distribution, which tells you the probability of k successes (i.e. "heads") in n Bernoulli (coin-type) trials.
+
+$$ \Pr(X=k) = \left(\begin{array}{c}
+n\\
+k
+\end{array}\right) p^k (1-p)^{(n-k)}
+$$
+
+and this plot shows the probability of observing k heads in 10 tosses of a fair coin.
+
+```{r}
+plot(0:10,dbinom(x=0:10,size=10,prob=0.5),xlab='k',type="b",ylab='')
+```
+
+So unless we observe a very big number of tosses, the approach of directly infering whether or not the coin is biased is not useful for us. We would incur a substantial error.
+
+Consider therefore the probability that the bernoulli parameter of $Z$ which generated our sample with $h$ heads and $t$ tails is $r$. We call this object the posterior density function of $r$ conditional on our data $h$ and $t$. (I've got most of the maths part from the [corresponding wikipedia entry](http://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair).)
+
+$$ f(r|h,t)=\frac{\Pr\left(h|r,N=h+t\right)g(r)}{\int_{0}^{1}\Pr\left(h|r,N=h+t\right)g(r)dr} $$
+
+where $g(r)$ is the prior density of $r$ (and I assume a uniform prior $g(r)=1$ for simplicity). 
+If that looks familiar to the definition of Bayes' Rule it's because it **is** Bayes' Rule, just the continuous version of it. As a reminder, the discrete rule looks like this:
+
+$$ \Pr(A_{i}|B)=\frac{\Pr\left(B|A_{i}\right)\Pr(A_{i})}{\sum_{j}\Pr\left(B|A_{j}\right)\Pr(A_{j})} $$
+
+Now we already said above that the binomial distribution is
+
+$$ \Pr\left(h|r,N=h+t\right) = \left(\begin{array}{c} N\\h \end{array}\right) r^h (1-r)^t $$
+
+such that we replace that in the expression of the conditional density to get:
+
+$$\begin{eqnarray} f(r|h,t)&=&\frac{\left(\begin{array}{c} N\\h \end{array}\right) r^h (1-r)^t g(r)}{\int_{0}^{1}\left(\begin{array}{c} N\\h \end{array}\right) r^h (1-r)^t g(r)dr} \\
+&=& \frac{ r^h (1-r)^t g(r)}{\int_{0}^{1} r^h (1-r)^t g(r)dr} \\
+&=& \frac{1 }{B(h+1,t+1)} r^h (1-r)^t g(r)
+\end{eqnarray}$$
+
+where the last equality comes from the definition of the Beta function, 
+
+$$ B(x,y) = \int_0^1 t^{x-1} (1-t)^{y-1} dt $$
+
+which becomes for positive integers $h,t$
+
+$$ B(h+1,t+1) = \frac{(h)!(t)!}{((h+1)+(t+1)-1)!} $$
+
+Making this final substitution, we can write our posterior density as 
+
+$$ f(r|h,t) = \frac{(N+1)!}{h!t!}r^{h}(1-r)^{t}g(r) $$
+
+With this in hand, we can now calculate probability of facing an unbiased coin given our sample of data. Let us define "unbiased" as an underlying probability $r \in (0.4,0.6)$. 
+
+## Calculating r
+
+We'll calculate an estimate of r given our data by integrating the conditional posterior distribution over the range we defined as *unbiased*. That is, for our sampel of 2 tails and 8 heads we want to find
+
+$$ \begin{eqnarray}\Pr\left(\text{unbiased}|h=8,t=2\right)&=&\int_{0.4}^{0.6}f(r|h=8,t=2)dr\\&=&\int_{0.4}^{0.6}\frac{11!}{8!2!}r^{8}(1-r)^{2}dr \end{eqnarray}$$
+
+and we want to find the area under the curve in the unbiased region, which we delimit be two red vertical lines:
+
+```{r}
+# part with exponents in density
+rdens <- function(x,h,n) {x^h * (1-x)^(n-h) }
+# full density
+f <- function(x,k,n,c){c*rdens(x,k,n)}
+# that's the factorials
+const <- 5*9*11
+curve(f(x,8,10,const),from=0,to=1,xlab="r",ylab="")
+abline(v=0.4,col="red")
+abline(v=0.6,col="red")
+```
+
+It's easy to do the integration by hand, but let's setup a numerical integration which we'll use later on:
+
+
+```{r}
+# probability mass in unbiased region
+prob <- integrate(f,lower=0.4,upper=0.6,k=8,n=10,c=const)
+```
+
+so the probability of a biased coin is `r 1-prob$value` under those assumptions.
+
+## Doing a second experiment
+
+> Suppose now that a second trial is to be conducted. This time we find 7 heads and 3 coins. What is the implied probability of a biased coin?
+
+This is simple in our setup, just change 2 numbers.
+
+$$ \begin{eqnarray}\Pr\left(\text{unbiased}|h=7,t=3\right)&=&\int_{0.4}^{0.6}f(r|h=7,t=3)dr\\&=&\int_{0.4}^{0.6}\frac{11!}{7!3!}r^{7}(1-r)^{2}dr \end{eqnarray}$$
+
+and again we want to find the area under the curve in the unbiased region. Note how the region grew now that the density shifted to the left.
+
+```{r}
+# factorials
+const <- 120*11
+curve(f(x,7,10,const),from=0,to=1,xlab="r",ylab="")
+abline(v=0.4,col="red")
+abline(v=0.6,col="red")
+```
+
+Evaluating the integral we get
+
+```{r}
+# probability mass in unbiased region
+prob2 <- integrate(f,lower=0.4,upper=0.6,k=7,n=10,c=const)
+```
+
+and the probability of bias is `r 1-prob2$value`.
+
+## What did you learn from the second experiment?
+
+We now have to results from 2 independent tests. The first test yielded `r 1-prob$value` and the second `r 1-prob2$value` probability of bias. Suppose you are a very conservative judge in the sense that you require very strong evidence before making a conviction. Say you require a probability of bias of at least 90% before you convict. Here comes the forensic scientist from the news story:
+
+> "The sum of the two results, both unreliable… cannot give a reliable result," he wrote.
+
+Is that true?
+
+The fact the the tests are independent means that we can pool them. In the end, what we did is throw a coin 20 times and we counted 16 heads. What does this imply?
+
+```{r}
+# probability mass in unbiased region
+const <- 5*7*9*17*19
+prob3 <- integrate(f,lower=0.4,upper=0.6,k=16,n=20,c=const)
+```
+
+Taken together, the evidence suggests the coin is biased with probability `r 1-prob3$value`. As you can see, the evidence becomes much stronger, in this case leading you to convict the defendant of the alleged fraud.
